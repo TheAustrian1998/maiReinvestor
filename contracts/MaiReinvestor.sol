@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IUsdcSwap.sol";
 import "./interfaces/IMaiStakingRewards.sol";
 import "./interfaces/IUniswapV2Router02.sol";
+import "./interfaces/IUniswapV2Pair.sol";
 import "hardhat/console.sol";
 
 contract MaiReinvestor is Ownable {
@@ -19,7 +20,7 @@ contract MaiReinvestor is Ownable {
     IERC20 public Usdc;
     IERC20 public QiDao;
     IERC20 public Mai;
-    IERC20 public LPToken;
+    IUniswapV2Pair public LPToken;
 
     constructor(
         uint256 _pid,
@@ -41,18 +42,36 @@ contract MaiReinvestor is Ownable {
         Usdc = IERC20(_UsdcAddr);
         QiDao = IERC20(_QiDaoAddr); //Governance token
         Mai = IERC20(_MaiAddr); //Stable
-        LPToken = IERC20(_LPToken);
+        LPToken = IUniswapV2Pair(_LPToken);
 
         //Submit approvals
         Usdc.approve(_QuickSwapV2Router02Addr, type(uint256).max);
         Usdc.approve(_UsdcSwapAddr, type(uint256).max);
         QiDao.approve(_QuickSwapV2Router02Addr, type(uint256).max);
         Mai.approve(_QuickSwapV2Router02Addr, type(uint256).max);
+        Mai.approve(_UsdcSwapAddr, type(uint256).max);
         LPToken.approve(_MaiStakingRewardsAddr, type(uint256).max);
+        LPToken.approve(_QuickSwapV2Router02Addr, type(uint256).max);
     }
 
     function getDeadline() public view returns (uint256) {
         return block.timestamp + 5 minutes;
+    }
+
+    function getDeposited() public view returns (uint256) {
+        return MaiStakingRewards.deposited(pid, address(this));
+    }
+
+    function getPending() public view returns (uint256) {
+        return MaiStakingRewards.pending(pid, address(this));
+    }
+
+    function _getLiquidityAmounts() public view returns (uint256, uint256) {
+        //This function determines the quantity of each token corresponds to this contract, based on LP
+        (uint112 reserve0, uint112 reserve1, ) = LPToken.getReserves();
+        uint256 totalSupply = LPToken.totalSupply();
+        uint256 poolPerc = (LPToken.balanceOf(address(this)) * 100 / totalSupply);
+        return (reserve0 * poolPerc / 100, reserve1 * poolPerc / 100);
     }
 
     function _addLiquidity(uint256 deadline) internal returns (uint256) {
@@ -75,6 +94,16 @@ contract MaiReinvestor is Ownable {
         );
 
         return liquidity;
+    }
+
+    function _removeLiquidity(uint256 deadline) internal {
+        uint256 liquidity = LPToken.balanceOf(address(this));
+        address tokenA = address(Usdc);
+        address tokenB = address(Mai);
+
+        (uint256 amountAMin, uint256 amountBMin) = _getLiquidityAmounts();
+
+        QuickSwapV2Router02.removeLiquidity(tokenA, tokenB, liquidity, amountAMin, amountBMin, address(this), deadline);
     }
 
     function _swapQiForUsdc(uint256 deadline) internal {
@@ -106,11 +135,6 @@ contract MaiReinvestor is Ownable {
         Usdc.transferFrom(msg.sender, address(this), amount);
     }
 
-    function withdraw(uint256 amount) public onlyOwner {
-        //Withdraw Usdc
-        Usdc.transfer(msg.sender, amount);
-    }
-
     function reinvest(uint256 deadline) public onlyOwner {
         //Reinvest all tokens in contract
 
@@ -120,7 +144,7 @@ contract MaiReinvestor is Ownable {
         //Check if QiDao balance > 0
         uint256 QiDaoBalance = QiDao.balanceOf(address(this));
         if (QiDaoBalance > 0) {
-            
+
             //Swap all QiDao for Usdc
             _swapQiForUsdc(deadline);
         }
@@ -138,6 +162,27 @@ contract MaiReinvestor is Ownable {
             //Deposit on Stake
             MaiStakingRewards.deposit(pid, liquidity);
         }
+    }
+
+    function closePosition(uint256 deadline) public onlyOwner {
+        //Redeem all positions, send all tokens to owner
+
+        //Remove liquidity from Stake and harvest
+        uint256 depositedAmount = getDeposited();
+        MaiStakingRewards.withdraw(pid, depositedAmount);
+
+        //Swap all QiDao to USDC
+        _swapQiForUsdc(deadline);
+
+        //Remove liquidity from Quickswap
+        _removeLiquidity(deadline);
+
+        //Swap all Mai to USDC
+        uint256 MaiBalance = Mai.balanceOf(address(this));
+        UsdcSwap.swapTo(MaiBalance);
+
+        //Send all USDC to owner
+        Usdc.transfer(owner(), Usdc.balanceOf(address(this)));
     }
 
 }

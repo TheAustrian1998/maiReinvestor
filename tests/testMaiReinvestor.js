@@ -39,7 +39,7 @@ describe("MaiReinvestor", function () {
 
     });
 
-    it("Should deposit successfully...", async function () {
+    it("Should 'deposit()' successfully...", async function () {
         let balanceToDeposit = ethers.utils.parseUnits("50000", usdcDecimals);
         await this.GenericERC20.attach(UsdcAddr).approve(this.maiReinvestor.address, balanceToDeposit);
         await this.maiReinvestor.deposit(balanceToDeposit);
@@ -50,10 +50,16 @@ describe("MaiReinvestor", function () {
         let deadline = await this.maiReinvestor.getDeadline();
         await this.maiReinvestor.reinvest(deadline);
         expect(await this.GenericERC20.attach(QiDaoAddr).balanceOf(this.maiReinvestor.address)).equal(0);
+        expect(await this.GenericERC20.attach(LPToken).balanceOf(this.maiReinvestor.address)).equal(0);
     });
 
-    it.skip("Should withdraw successfully...", async function () {
-
+    it("Should 'closePosition()' successfully...", async function () {
+        let deadline = await this.maiReinvestor.getDeadline();
+        await this.maiReinvestor.closePosition(deadline);
+        expect(await this.GenericERC20.attach(QiDaoAddr).balanceOf(this.maiReinvestor.address)).equal(0);
+        expect(await this.GenericERC20.attach(LPToken).balanceOf(this.maiReinvestor.address)).equal(0);
+        expect(await this.GenericERC20.attach(MaiAddr).balanceOf(this.maiReinvestor.address)).equal(0);
+        expect(await this.GenericERC20.attach(UsdcAddr).balanceOf(this.maiReinvestor.address)).equal(0);
     });
 
 });
