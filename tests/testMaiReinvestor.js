@@ -35,7 +35,8 @@ describe("MaiReinvestor", function () {
     });
 
     it("Should 'reinvest()' successfully...", async function(){
-        await this.maiReinvestor.reinvest();
+        let deadline = await this.maiReinvestor.getDeadline();
+        await this.maiReinvestor.reinvest(deadline);
     });
 
     it.skip("Should withdraw successfully...", async function(){

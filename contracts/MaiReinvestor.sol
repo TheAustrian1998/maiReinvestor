@@ -51,6 +51,10 @@ contract MaiReinvestor is Ownable {
         LPToken.approve(_MaiStakingRewardsAddr, type(uint256).max);
     }
 
+    function getDeadline() public view returns (uint256) {
+        return block.timestamp + 5 minutes;
+    }
+
     function _addLiquidity(uint256 deadline) internal returns (uint256) {
 
         uint256 MaiBalanceToAdd = Mai.balanceOf(address(this));
@@ -105,9 +109,8 @@ contract MaiReinvestor is Ownable {
         Usdc.transfer(msg.sender, amount);
     }
 
-    function reinvest() public onlyOwner {
+    function reinvest(uint256 deadline) public onlyOwner {
         //Reinvest all tokens in contract
-        uint256 deadline = block.timestamp + 5 minutes;
 
         //Check if QiDao balance > 0
         uint256 QiDaoBalance = QiDao.balanceOf(address(this));
