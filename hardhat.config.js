@@ -1,4 +1,6 @@
 require("@nomiclabs/hardhat-waffle");
+require("hardhat-gas-reporter");
+
 let { alchemyUrl } = require("./secrets.json");
 
 module.exports = {

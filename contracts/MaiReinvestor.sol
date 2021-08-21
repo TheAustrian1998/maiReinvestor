@@ -77,7 +77,9 @@ contract MaiReinvestor is Ownable {
         return liquidity;
     }
 
-    function _swapQiForUsdc(uint256 QiDaoBalance, uint256 deadline) internal {
+    function _swapQiForUsdc(uint256 deadline) internal {
+        uint256 QiDaoBalance = QiDao.balanceOf(address(this));
+
         address[] memory path = new address[](2);
         path[0] = address(QiDao);
         path[1] = address(Usdc);
@@ -112,11 +114,15 @@ contract MaiReinvestor is Ownable {
     function reinvest(uint256 deadline) public onlyOwner {
         //Reinvest all tokens in contract
 
+        //Harvest
+        MaiStakingRewards.deposit(pid, 0);
+
         //Check if QiDao balance > 0
         uint256 QiDaoBalance = QiDao.balanceOf(address(this));
         if (QiDaoBalance > 0) {
+            
             //Swap all QiDao for Usdc
-            _swapQiForUsdc(QiDaoBalance, deadline);
+            _swapQiForUsdc(deadline);
         }
 
         //Check if Usdc balance > 0
@@ -125,11 +131,11 @@ contract MaiReinvestor is Ownable {
 
             //Swap half of Usdc to Mai
             UsdcSwap.swapFrom(UsdcBalance / 2);
-
+            
             //Add liquidity
             uint256 liquidity = _addLiquidity(deadline);
             
-            //Deposit on Stake (Harvest if possible)
+            //Deposit on Stake
             MaiStakingRewards.deposit(pid, liquidity);
         }
     }
