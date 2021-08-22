@@ -7,7 +7,6 @@ import "./interfaces/IUsdcSwap.sol";
 import "./interfaces/IMaiStakingRewards.sol";
 import "./interfaces/IUniswapV2Router02.sol";
 import "./interfaces/IUniswapV2Pair.sol";
-import "hardhat/console.sol";
 
 contract MaiReinvestor is Ownable {
 
@@ -66,8 +65,29 @@ contract MaiReinvestor is Ownable {
         return MaiStakingRewards.pending(pid, address(this));
     }
 
+    function _calculateExactLiquidity(uint256 UsdcBalanceToAdd, uint256 MaiBalanceToAdd) public view returns (uint256, uint256, uint256, uint256){
+        //This fn returns the exact amount of liquidity to add, and avoid getting sandwiched
+
+        (uint112 reserve0, uint112 reserve1, ) = LPToken.getReserves();
+        
+        //get the percentage of the pool based on the amount to provide
+        uint256 percOfTotalLiqUsdc = (UsdcBalanceToAdd * 100 / reserve0);
+        uint256 percOfTotalLiqMai = (MaiBalanceToAdd * 100 / reserve1);
+
+        //Select the smaller percentage
+        uint256 smallerTokenPerc;
+        if (percOfTotalLiqUsdc >= percOfTotalLiqMai) {
+            smallerTokenPerc = percOfTotalLiqMai;
+        }
+        if (percOfTotalLiqUsdc <= percOfTotalLiqMai) {
+            smallerTokenPerc = percOfTotalLiqUsdc;
+        }
+        //Returns values (To avoid "Stack to deep", return "UsdcBalanceToAdd" and "MaiBalanceToAdd")
+        return (UsdcBalanceToAdd * smallerTokenPerc / 100, MaiBalanceToAdd * smallerTokenPerc / 100, UsdcBalanceToAdd, MaiBalanceToAdd);
+    }
+
     function _getLiquidityAmounts() public view returns (uint256, uint256) {
-        //This function determines the quantity of each token corresponds to this contract, based on LP
+        //This function determines the quantity of each token corresponds to this contract, at the moment of extract liq, based on LP
         (uint112 reserve0, uint112 reserve1, ) = LPToken.getReserves();
         uint256 totalSupply = LPToken.totalSupply();
         uint256 poolPerc = (LPToken.balanceOf(address(this)) * 100 / totalSupply);
@@ -76,19 +96,16 @@ contract MaiReinvestor is Ownable {
 
     function _addLiquidity(uint256 deadline) internal returns (uint256) {
 
-        uint256 MaiBalanceToAdd = Mai.balanceOf(address(this));
-        uint256 UsdcBalanceToAdd = Usdc.balanceOf(address(this));
-        address tokenA = address(Usdc);
-        address tokenB = address(Mai);
+        (uint256 amountUsdcMin, uint256 amountMaiMin, uint256 UsdcBalanceToAdd, uint256 MaiBalanceToAdd) = _calculateExactLiquidity(Usdc.balanceOf(address(this)), Mai.balanceOf(address(this)));
 
         //Provide liquidity
         (, , uint256 liquidity) = QuickSwapV2Router02.addLiquidity(
-            tokenA,
-            tokenB,
+            address(Usdc),
+            address(Mai),
             UsdcBalanceToAdd,
             MaiBalanceToAdd,
-            UsdcBalanceToAdd - ((UsdcBalanceToAdd * 2) / 100),
-            MaiBalanceToAdd - ((MaiBalanceToAdd * 2) / 100),
+            amountUsdcMin,
+            amountMaiMin,
             address(this),
             deadline
         );
@@ -97,6 +114,7 @@ contract MaiReinvestor is Ownable {
     }
 
     function _removeLiquidity(uint256 deadline) internal {
+        //Remove liq
         uint256 liquidity = LPToken.balanceOf(address(this));
         address tokenA = address(Usdc);
         address tokenB = address(Mai);
@@ -182,7 +200,7 @@ contract MaiReinvestor is Ownable {
         UsdcSwap.swapTo(MaiBalance);
 
         //Send all USDC to owner
-        Usdc.transfer(owner(), Usdc.balanceOf(address(this)));
+        Usdc.transfer(msg.sender, Usdc.balanceOf(address(this)));
     }
 
 }
