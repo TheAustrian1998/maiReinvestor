@@ -8,6 +8,7 @@ describe("MaiReinvestor", function () {
     let usdcDecimals;
 
     before(async function () {
+        this.timeout( 60000 );
         [deployerSigner] = await ethers.getSigners();
 
         await hre.network.provider.request({
@@ -40,6 +41,7 @@ describe("MaiReinvestor", function () {
     });
 
     it("Should 'deposit()' successfully...", async function () {
+        this.timeout( 60000 );
         let balanceToDeposit = ethers.utils.parseUnits("50000", usdcDecimals);
         await this.GenericERC20.attach(UsdcAddr).approve(this.maiReinvestor.address, balanceToDeposit);
         await this.maiReinvestor.deposit(balanceToDeposit);
@@ -47,6 +49,7 @@ describe("MaiReinvestor", function () {
     });
 
     it("Should 'reinvest()' successfully...", async function () {
+        this.timeout( 60000 );
         let deadline = await this.maiReinvestor.getDeadline();
         await this.maiReinvestor.reinvest(deadline);
         expect(await this.GenericERC20.attach(QiDaoAddr).balanceOf(this.maiReinvestor.address)).equal(0);
@@ -54,6 +57,7 @@ describe("MaiReinvestor", function () {
     });
 
     it("Should 'closePosition()' successfully...", async function () {
+        this.timeout( 60000 );
         let deadline = await this.maiReinvestor.getDeadline();
         await this.maiReinvestor.closePosition(deadline);
         expect(await this.GenericERC20.attach(QiDaoAddr).balanceOf(this.maiReinvestor.address)).equal(0);

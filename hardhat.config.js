@@ -2,7 +2,6 @@ require("@nomiclabs/hardhat-waffle");
 require("hardhat-gas-reporter");
 require("@nomiclabs/hardhat-etherscan");
 
-
 let { alchemyUrl, etherscanApi, mnemonic } = require("./secrets.json");
 
 module.exports = {
@@ -11,11 +10,12 @@ module.exports = {
     hardhat: {
       forking: {
         url: alchemyUrl,
+        timeout: 200000
       }
     },
     polygon: {
       url: alchemyUrl,
-      accounts: mnemonic
+      accounts: { mnemonic }
     }
   },
   etherscan: {
