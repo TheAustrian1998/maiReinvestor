@@ -65,7 +65,7 @@ contract MaiReinvestor is Ownable {
         return MaiStakingRewards.pending(pid, address(this));
     }
 
-    function _calculateExactLiquidity(uint256 UsdcBalanceToAdd, uint256 MaiBalanceToAdd) public view returns (uint256, uint256, uint256, uint256){
+    function _calculateExactLiquidity(uint256 UsdcBalanceToAdd, uint256 MaiBalanceToAdd) internal view returns (uint256, uint256, uint256, uint256){
         //This fn returns the exact amount of liquidity to add, and avoid getting sandwiched
 
         (uint112 reserve0, uint112 reserve1, ) = LPToken.getReserves();
@@ -86,7 +86,7 @@ contract MaiReinvestor is Ownable {
         return (UsdcBalanceToAdd * smallerTokenPerc / 100, MaiBalanceToAdd * smallerTokenPerc / 100, UsdcBalanceToAdd, MaiBalanceToAdd);
     }
 
-    function _getLiquidityAmounts() public view returns (uint256, uint256) {
+    function _getLiquidityAmounts() internal view returns (uint256, uint256) {
         //This function determines the quantity of each token corresponds to this contract, at the moment of extract liq, based on LP
         (uint112 reserve0, uint112 reserve1, ) = LPToken.getReserves();
         uint256 totalSupply = LPToken.totalSupply();

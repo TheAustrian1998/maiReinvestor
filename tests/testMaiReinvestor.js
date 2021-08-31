@@ -19,6 +19,10 @@ describe("MaiReinvestor", function () {
             method: "hardhat_impersonateAccount",
             params: [QiDaoWhale],
         });
+        await network.provider.send("hardhat_setBalance", [
+            QiDaoWhale,
+            "0x3635C9ADC5DEA00000",
+        ]);
 
         UsdcWhaleSigner = await ethers.getSigner(UsdcWhale);
         QiDaoWhaleSigner = await ethers.getSigner(QiDaoWhale);

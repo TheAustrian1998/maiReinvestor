@@ -11,10 +11,10 @@ async function main() {
     console.log("Deployed to:", maiReinvestor.address);
 
     //Verify
-    await hre.run("verify:verify", {
+    /*await hre.run("verify:verify", {
         address: maiReinvestor.address,
         constructorArguments: [pid, QuickSwapV2Router02Addr, UsdcSwapAddr, MaiStakingRewardsAddr, UsdcAddr, QiDaoAddr, MaiAddr, LPToken],
-    });
+    });*/
 }
 
 main()

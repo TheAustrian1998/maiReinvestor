@@ -2,7 +2,7 @@ require("@nomiclabs/hardhat-waffle");
 require("hardhat-gas-reporter");
 require("@nomiclabs/hardhat-etherscan");
 
-let { alchemyUrl, etherscanApi, mnemonic } = require("./secrets.json");
+let { alchemyUrl, etherscanApi, privateKey } = require("./secrets.json");
 
 module.exports = {
   solidity: "0.8.0",
@@ -15,7 +15,7 @@ module.exports = {
     },
     polygon: {
       url: alchemyUrl,
-      accounts: { mnemonic }
+      accounts: [privateKey]
     }
   },
   etherscan: {
